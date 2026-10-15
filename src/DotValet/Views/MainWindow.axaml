@@ -1,0 +1,361 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DotValet.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1180" d:DesignHeight="780"
+        x:Class="DotValet.Views.MainWindow"
+        x:Name="Root"
+        x:DataType="vm:MainViewModel"
+        Title="Dot Valet"
+        Width="1180" Height="800" MinWidth="920" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PageBrush}">
+
+    <Window.Styles>
+        <Style Selector="Ellipse.dot">
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="9" />
+            <Setter Property="Fill" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Ellipse.dot.on">
+            <Setter Property="Fill" Value="{DynamicResource OkBrush}" />
+        </Style>
+        <Style Selector="StackPanel.form > :is(Control)">
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- Cabeçalho -->
+        <Border DockPanel.Dock="Top" Padding="20,14" Background="{DynamicResource CardBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentBrush}">
+                        <TextBlock Text=".V" Foreground="White" FontWeight="Bold" FontSize="15"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Dot Valet" FontSize="19" FontWeight="Bold" />
+                        <TextBlock Classes="muted" Text="Domínios .test para aplicações ASP.NET Core (.NET Core 2.x → .NET 10+)" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <Border Classes="badge" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding PlatformName}" />
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Ellipse Classes="dot" Classes.on="{Binding ProxyRunning}" />
+                        <TextBlock Text="Proxy" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button Content="Parar proxy" IsVisible="{Binding ProxyRunning}" Command="{Binding ToggleProxyCommand}" />
+                    <Button Content="Iniciar proxy" Classes="accent" IsVisible="{Binding !ProxyRunning}" Command="{Binding ToggleProxyCommand}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Barra de status -->
+        <Border DockPanel.Dock="Bottom" Padding="16,8" Background="{DynamicResource CardBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,*">
+                <ProgressBar IsIndeterminate="True" Width="60" Margin="0,0,10,0" IsVisible="{Binding IsBusy}" VerticalAlignment="Center" />
+                <SelectableTextBlock Grid.Column="1" Text="{Binding StatusMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <TabControl Margin="12,4,12,0">
+            <!-- ===================== SITES ===================== -->
+            <TabItem Header="Sites">
+                <Grid ColumnDefinitions="320,16,*" Margin="0,8,0,12">
+                    <!-- Lista -->
+                    <Border Classes="card" Padding="0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top" Margin="14,14,14,8" Spacing="8">
+                                <TextBlock Classes="h2" Text="Sites" Margin="0" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button Content="+ Pasta do projeto" Command="{Binding LinkProjectCommand}"
+                                            ToolTip.Tip="Vincula um projeto (equivalente ao `valet link`)" />
+                                    <Button Content="+ .csproj" Command="{Binding LinkProjectFileCommand}" />
+                                    <Button Content="Estacionar pasta" Command="{Binding ParkFolderCommand}"
+                                            ToolTip.Tip="Cada subpasta com um projeto web vira pasta.test (equivalente ao `valet park`)" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <Panel>
+                                <TextBlock Classes="muted" Margin="16" IsVisible="{Binding HasNoSites}"
+                                           Text="Nenhum site ainda. Vincule a pasta de um projeto ASP.NET Core ou estacione uma pasta com vários projetos." />
+                                <ListBox ItemsSource="{Binding Sites}" SelectedItem="{Binding SelectedSite}" Background="Transparent">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:SiteViewModel">
+                                            <Grid ColumnDefinitions="Auto,*" Margin="2,4">
+                                                <Ellipse Classes="dot" Classes.on="{Binding IsRunning}" VerticalAlignment="Top" Margin="0,6,10,0" />
+                                                <StackPanel Grid.Column="1" Spacing="2">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="•" IsVisible="{Binding IsDirty}" Foreground="{DynamicResource WarnBrush}"
+                                                                   ToolTip.Tip="Alterações não salvas" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding PrimaryUrl}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                                                    <WrapPanel ItemSpacing="4" LineSpacing="4" Margin="0,2,0,0">
+                                                        <Border Classes="badge"><TextBlock Text="{Binding FrameworkLabel}" /></Border>
+                                                        <Border Classes="badge" IsVisible="{Binding IsNew}"><TextBlock Text="novo" /></Border>
+                                                        <Border Classes="badge" IsVisible="{Binding Parked}"><TextBlock Text="estacionado" /></Border>
+                                                        <Border Classes="badge" IsVisible="{Binding Secure}"><TextBlock Text="https" /></Border>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Panel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Detalhes -->
+                    <ScrollViewer Grid.Column="2" IsVisible="{Binding HasSelection}">
+                        <StackPanel Spacing="14" DataContext="{Binding SelectedSite}" x:DataType="vm:SiteViewModel" Margin="0,0,8,0">
+
+                            <!-- Projeto -->
+                            <Border Classes="card">
+                                <StackPanel Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Text="{Binding Name}" FontSize="18" FontWeight="SemiBold" PlaceholderText="Nome do site" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <Border Classes="badge"><TextBlock Text="{Binding FrameworkLabel}" /></Border>
+                                            <Ellipse Classes="dot" Classes.on="{Binding IsRunning}" />
+                                            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Classes="warn" Text="{Binding ProjectWarning}" IsVisible="{Binding ProjectWarning, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                        <SelectableTextBlock Classes="mono" Text="{Binding ProjectPath}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                        <Button Grid.Column="1" Content="Alterar…" Margin="8,0,0,0" Command="{Binding #Root.((vm:MainViewModel)DataContext).ChangeProjectCommand}" />
+                                        <Button Grid.Column="2" Content="Abrir pasta" Margin="8,0,0,0" Command="{Binding #Root.((vm:MainViewModel)DataContext).OpenProjectFolderCommand}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Domínio -->
+                            <Border Classes="card">
+                                <StackPanel Classes="form">
+                                    <TextBlock Classes="h2" Text="Domínio" />
+                                    <StackPanel>
+                                        <TextBox Text="{Binding Domain}" PlaceholderText="app  ·  app.test  ·  app2.test:5172" Classes="mono" FontSize="14" />
+                                        <TextBlock Classes="muted" Margin="0,4,0,0"
+                                                   Text="Sem porta (app.test) o site passa pelo proxy do Dot Valet (porta HTTP/HTTPS da aba Ambiente). Com porta (app2.test:5172) o próprio Kestrel escuta no domínio." />
+                                        <TextBlock Classes="error" Margin="0,4,0,0" Text="{Binding DomainError}"
+                                                   IsVisible="{Binding DomainError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6" IsVisible="{Binding HasEndpoints}">
+                                        <TextBlock Classes="label" Text="Acesse em" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <HyperlinkButton Classes="url" Content="{Binding PrimaryUrl}"
+                                                             Command="{Binding #Root.((vm:MainViewModel)DataContext).OpenUrlCommand}"
+                                                             CommandParameter="{Binding PrimaryUrl}" />
+                                            <Button Content="Copiar" Padding="8,2"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).CopyUrlCommand}"
+                                                    CommandParameter="{Binding PrimaryUrl}" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding ShowProxyUrl}">
+                                            <TextBlock Classes="muted" Text="também via proxy:" VerticalAlignment="Center" />
+                                            <HyperlinkButton Padding="0" Content="{Binding ProxyUrl}"
+                                                             Command="{Binding #Root.((vm:MainViewModel)DataContext).OpenUrlCommand}"
+                                                             CommandParameter="{Binding ProxyUrl}" />
+                                        </StackPanel>
+                                        <TextBlock Classes="muted" Text="{Binding ModeDescription}" />
+                                    </StackPanel>
+
+                                    <CheckBox IsChecked="{Binding Secure}"
+                                              Content="HTTPS no proxy (certificado emitido por uma CA local, como o `valet secure`)" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- launchSettings -->
+                            <Border Classes="card">
+                                <StackPanel Classes="form">
+                                    <TextBlock Classes="h2" Text="launchSettings.json" />
+                                    <CheckBox IsChecked="{Binding UpdateLaunchSettings}"
+                                              Content="Incluir a URL no Properties/launchSettings.json (dotnet run, Visual Studio, Rider, VS Code)" />
+                                    <StackPanel Spacing="10" IsEnabled="{Binding UpdateLaunchSettings}">
+                                        <SelectableTextBlock Classes="mono" Text="{Binding LaunchSettingsPath}" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="Nome do perfil" VerticalAlignment="Center" />
+                                            <TextBox Text="{Binding LaunchProfileName}" Width="200" />
+                                        </StackPanel>
+                                        <CheckBox IsChecked="{Binding AddToExistingProfiles}"
+                                                  Content="Adicionar também ao applicationUrl dos perfis existentes" />
+                                        <TextBlock Classes="muted"
+                                                   Text="O perfil do Dot Valet fica em primeiro, então `dotnet run` já sobe no domínio. Um backup .dotvalet.bak é criado na primeira alteração." />
+                                        <Border Background="{DynamicResource CodeBrush}" CornerRadius="8" Padding="12"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                            <SelectableTextBlock Classes="mono" Text="{Binding LaunchSettingsPreview}" TextWrapping="Wrap" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Executar -->
+                            <Border Classes="card">
+                                <StackPanel Classes="form">
+                                    <TextBlock Classes="h2" Text="Executar" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <CheckBox IsChecked="{Binding UseWatch}" Content="Usar dotnet watch (hot reload)" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                            <Button Content="▶ Iniciar" Classes="accent" IsVisible="{Binding !IsRunning}"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).StartSiteCommand}" />
+                                            <Button Content="■ Parar" IsVisible="{Binding IsRunning}"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).StopSiteCommand}" />
+                                            <Button Content="Limpar log"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).ClearLogCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBox x:Name="LogBox" Classes="mono" Text="{Binding Log}" IsReadOnly="True" AcceptsReturn="True"
+                                             TextWrapping="NoWrap" Height="240" PlaceholderText="A saída do dotnet run aparece aqui."
+                                             ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Ações -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+                                <Button Content="Salvar e aplicar" Classes="accent" Padding="18,8"
+                                        Command="{Binding #Root.((vm:MainViewModel)DataContext).SaveSiteCommand}" />
+                                <Button Content="Desfazer alterações" IsEnabled="{Binding IsDirty}"
+                                        Command="{Binding #Root.((vm:MainViewModel)DataContext).RevertSiteCommand}" />
+                                <Button Content="Remover site" Foreground="{DynamicResource ErrorBrush}"
+                                        Command="{Binding #Root.((vm:MainViewModel)DataContext).RemoveSiteCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== AMBIENTE ===================== -->
+            <TabItem Header="Ambiente">
+                <ScrollViewer Margin="0,8,0,12">
+                    <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto" Margin="0,0,8,0">
+
+                        <Border Classes="card">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="h2" Text="Plataforma detectada" />
+                                <TextBlock Text="{Binding PlatformName}" FontWeight="SemiBold" />
+                                <TextBlock Classes="muted" Text="{Binding PlatformStrategy}" />
+                                <TextBlock Classes="label" Text="Privilégios" Margin="0,8,0,0" />
+                                <TextBlock Text="{Binding ElevationInfo}" TextWrapping="Wrap" />
+                                <TextBlock Classes="label" Text="Configuração" Margin="0,8,0,0" />
+                                <SelectableTextBlock Classes="mono" Text="{Binding ConfigPath}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Classes="card">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="h2" Text=".NET" />
+                                <SelectableTextBlock Classes="mono" Text="{Binding DotnetPath}" TextWrapping="Wrap" />
+                                <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="SDKs" />
+                                        <SelectableTextBlock Classes="mono" Text="{Binding DotnetSdks}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Classes="label" Text="Runtimes ASP.NET Core" />
+                                        <SelectableTextBlock Classes="mono" Text="{Binding AspNetRuntimes}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Classes="card">
+                            <StackPanel Classes="form">
+                                <TextBlock Classes="h2" Text="Proxy reverso" />
+                                <TextBlock Text="{Binding ProxyStatus}" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Porta HTTP" />
+                                        <TextBox Text="{Binding HttpPort}" Width="110" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Porta HTTPS" />
+                                        <TextBox Text="{Binding HttpsPort}" Width="110" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <CheckBox IsChecked="{Binding EnableHttps}" Content="Habilitar HTTPS no proxy" />
+                                <CheckBox IsChecked="{Binding AutoStartProxy}" Content="Iniciar o proxy junto com o Dot Valet" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="2" Grid.Column="2" Classes="card">
+                            <StackPanel Classes="form">
+                                <TextBlock Classes="h2" Text="Domínio de topo (TLD)" />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="*." VerticalAlignment="Center" Classes="mono" FontSize="14" />
+                                    <TextBox Text="{Binding Tld}" Width="140" Classes="mono" />
+                                </StackPanel>
+                                <TextBlock Classes="muted" Text="Sites digitados sem ponto (ex.: app) recebem este TLD. .test é reservado pela RFC 2606 e é o padrão do Valet." />
+                                <TextBlock Classes="h2" Text="Certificados HTTPS" Margin="0,8,0,8" />
+                                <TextBlock Text="{Binding CaStatus}" TextWrapping="Wrap" />
+                                <SelectableTextBlock Classes="mono" Text="{Binding CaPath}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" />
+                                <Button Content="Criar e confiar na CA local" Command="{Binding TrustCaCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="4" Classes="card">
+                            <StackPanel Classes="form">
+                                <TextBlock Classes="h2" Text="Resolução de DNS" />
+                                <RadioButton GroupName="dns" IsChecked="{Binding UseHostsFile}" Content="Arquivo hosts (uma linha por site)" />
+                                <SelectableTextBlock Classes="mono" Text="{Binding HostsPath}" Foreground="{DynamicResource MutedBrush}" Margin="28,0,0,6" />
+                                <CheckBox IsChecked="{Binding BackupHostsFile}" Content="Fazer backup do hosts antes de cada alteração" Margin="28,0,0,0" />
+                                <TextBlock Classes="muted" Margin="28,0,0,0" TextWrapping="Wrap"
+                                           Text="O principal guarda o hosts original (antes da primeira alteração) e nunca é sobrescrito; o último é substituído a cada alteração." />
+                                <SelectableTextBlock Classes="mono" Text="{Binding HostsBackupStatus}" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="28,0,0,4" />
+                                <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="28,0,0,10">
+                                    <Button Content="Restaurar último backup" Command="{Binding RestoreHostsLastCommand}" />
+                                    <Button Content="Restaurar backup principal" Command="{Binding RestoreHostsPrincipalCommand}" />
+                                </WrapPanel>
+                                <RadioButton GroupName="dns" IsChecked="{Binding UseDnsmasq}" IsEnabled="{Binding DnsmasqSupported}" Content="dnsmasq (wildcard)" />
+                                <TextBlock Classes="muted" Text="{Binding DnsmasqHint}" Margin="28,0,0,4" />
+                                <TextBlock Margin="28,0,0,10" Text="{Binding DnsmasqStatus, StringFormat='Status: {0}'}" />
+                                <Border IsVisible="{Binding ValetInstalled}" BorderBrush="#E0A030" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,4,0,10">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="Laravel Valet detectado" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding ValetRecommendation}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ValetStatus, StringFormat='Status: {0}'}" TextWrapping="Wrap" />
+                                        <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                            <Button Content="Parar o Valet" Command="{Binding StopValetCommand}" />
+                                            <Button Content="Copiar &quot;valet start&quot;" Command="{Binding CopyValetCommandCommand}" CommandParameter="valet start" />
+                                            <Button Content="Copiar &quot;valet uninstall&quot;" Command="{Binding CopyValetCommandCommand}" CommandParameter="valet uninstall" />
+                                        </WrapPanel>
+                                        <CheckBox IsChecked="{Binding ValetIntegration}" Content="Integrar com o Valet (valet proxy): publicar os sites .NET pelo nginx dele" />
+                                    </StackPanel>
+                                </Border>
+                                <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                    <Button Content="Sincronizar arquivo hosts" Command="{Binding SyncHostsCommand}" />
+                                    <Button Content="Instalar/configurar dnsmasq" IsEnabled="{Binding DnsmasqSupported}" Command="{Binding InstallDnsmasqCommand}" />
+                                    <Button Content="Remover dnsmasq" IsEnabled="{Binding DnsmasqSupported}" Command="{Binding UninstallDnsmasqCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="4" Grid.Column="2" Classes="card">
+                            <StackPanel Classes="form">
+                                <TextBlock Classes="h2" Text="Pastas estacionadas (park)" />
+                                <TextBlock Classes="muted" Text="Cada subpasta com um projeto ASP.NET Core vira automaticamente subpasta.test." />
+                                <ListBox ItemsSource="{Binding ParkedPaths}" SelectedItem="{Binding SelectedParkedPath}" MinHeight="90" MaxHeight="200" />
+                                <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                    <Button Content="Adicionar pasta" Command="{Binding ParkFolderCommand}" />
+                                    <Button Content="Remover selecionada" Command="{Binding UnparkFolderCommand}" />
+                                    <Button Content="Re-escanear" Command="{Binding RescanParkedCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Row="6" Grid.ColumnSpan="3" Orientation="Horizontal">
+                            <Button Content="Salvar configurações" Classes="accent" Padding="18,8" Command="{Binding SaveSettingsCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

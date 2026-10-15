@@ -1,0 +1,96 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DotValet.App"
+             Name="Dot Valet"
+             RequestedThemeVariant="Default">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AccentBrush" Color="#5B3FD6" />
+                    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="PageBrush" Color="#F4F3F8" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#6B6880" />
+                    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#E2E0EA" />
+                    <SolidColorBrush x:Key="WarnBrush" Color="#A15C00" />
+                    <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C" />
+                    <SolidColorBrush x:Key="OkBrush" Color="#0F7B3F" />
+                    <SolidColorBrush x:Key="BadgeBrush" Color="#ECE8FF" />
+                    <SolidColorBrush x:Key="CodeBrush" Color="#F6F5FA" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AccentBrush" Color="#A996FF" />
+                    <SolidColorBrush x:Key="CardBrush" Color="#232229" />
+                    <SolidColorBrush x:Key="PageBrush" Color="#18171D" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#A3A0B5" />
+                    <SolidColorBrush x:Key="BorderSubtleBrush" Color="#34323D" />
+                    <SolidColorBrush x:Key="WarnBrush" Color="#F0B45A" />
+                    <SolidColorBrush x:Key="ErrorBrush" Color="#FF8A7A" />
+                    <SolidColorBrush x:Key="OkBrush" Color="#5FD39A" />
+                    <SolidColorBrush x:Key="BadgeBrush" Color="#352F55" />
+                    <SolidColorBrush x:Key="CodeBrush" Color="#1C1B22" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <FontFamily x:Key="MonoFont">Cascadia Mono, SF Mono, Menlo, Consolas, DejaVu Sans Mono, monospace</FontFamily>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style Selector="TextBlock.h2">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.warn">
+            <Setter Property="Foreground" Value="{DynamicResource WarnBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.error">
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="SelectableTextBlock.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="TextBox.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="Border.badge">
+            <Setter Property="Background" Value="{DynamicResource BadgeBrush}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="6,1" />
+        </Style>
+        <Style Selector="Border.badge > TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+        </Style>
+        <Style Selector="HyperlinkButton.url">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Application.Styles>
+</Application>
