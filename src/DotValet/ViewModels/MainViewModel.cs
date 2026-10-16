@@ -71,7 +71,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string? selectedParkedPath;
     [ObservableProperty] private bool backupHostsFile;
     [ObservableProperty] private string hostsBackupStatus = "";
-
+    
     // ---- Laravel Valet ----
     public bool ValetInstalled => _valet.IsInstalled;
     [ObservableProperty] private bool valetIntegration;

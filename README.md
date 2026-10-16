@@ -1,11 +1,48 @@
 # Dot Valet
 
+[![CI](https://github.com/salesHgabriel/DotValet/actions/workflows/ci.yml/badge.svg)](https://github.com/salesHgabriel/DotValet/actions/workflows/ci.yml)
+[![Release](https://github.com/salesHgabriel/DotValet/actions/workflows/release.yml/badge.svg)](https://github.com/salesHgabriel/DotValet/releases/latest)
+
 Aplicativo desktop (Avalonia, multiplataforma) que faz pelo **ASP.NET Core** o que o
 [Laravel Valet](https://github.com/laravel/valet) (macOS), o [valet-linux](https://github.com/cpriego/valet-linux)
 e o [Laragon](https://github.com/leokhoa/laragon) (Windows) fazem pelo PHP: cada projeto ganha um domínio
 `.test`, com link clicável, HTTPS local opcional e integração com o `launchSettings.json`.
 
 Funciona com projetos **.NET Core 2.x, 3.x, .NET 5, 6, 7, 8, 9, 10** e seguintes.
+
+![Dot Valet — lista de sites e detalhes do site](docs/screenshots/dotvalet-sites.png)
+
+## Download
+
+Baixe a versão mais recente em [Releases](https://github.com/salesHgabriel/DotValet/releases/latest):
+
+| Sistema | Arquivo |
+|---|---|
+| Windows (x64 / ARM64) | `DotValet-<versão>-win-x64.zip` / `win-arm64.zip` |
+| macOS (Apple Silicon / Intel) | `DotValet-<versão>-osx-arm64.zip` / `osx-x64.zip` (contém `Dot Valet.app`) |
+| Linux (x64 / ARM64) | `DotValet-<versão>-linux-x64.tar.gz` / `linux-arm64.tar.gz` |
+
+Os executáveis são self-contained: não é preciso ter o .NET instalado para abrir o Dot Valet (para rodar
+seus projetos, sim). No macOS o app não é notarizado — na primeira vez use botão direito → **Abrir** ou
+`xattr -dr com.apple.quarantine "/Applications/Dot Valet.app"`.
+
+## Screenshots
+
+### Apps de exemplo rodando em domínios `.test`
+
+Os três projetos de [`samples/`](samples) servidos pelo Dot Valet ao mesmo tempo, cada um em um modo:
+
+| `http://loja.test` — modo proxy | `http://painel.test:5172` — modo direto | `https://blog.test` — HTTPS com CA local |
+|---|---|---|
+| ![Loja em http://loja.test](docs/screenshots/app-loja.png) | ![Painel em http://painel.test:5172](docs/screenshots/app-painel.png) | ![Blog em https://blog.test](docs/screenshots/app-blog.png) |
+| .NET 8, porta interna alocada automaticamente | .NET 9, Kestrel escutando na porta do domínio | .NET 10, proxy com certificado por domínio (SNI) |
+
+### Aplicativo
+
+| Site com HTTPS | Aba Ambiente |
+|---|---|
+| ![Site com HTTPS e perfil do launchSettings.json](docs/screenshots/dotvalet-https.png) | ![Aba Ambiente: plataforma, proxy, TLD, certificados e DNS](docs/screenshots/dotvalet-ambiente.png) |
+
 
 ## Como funciona
 
@@ -76,6 +113,40 @@ Publicação de um executável:
 dotnet publish src/DotValet -c Release -r osx-arm64 --self-contained   # ou win-x64, linux-x64
 ```
 
+### Apps de exemplo
+
+`samples/` tem três minimal APIs (Loja .NET 8, Painel .NET 9, Blog .NET 10) que mostram na página o
+endereço pelo qual foram abertas. Vincule a pasta de cada uma com **+ Pasta do projeto** para testar os
+modos proxy, direto e HTTPS. Elas usam `UseForwardedHeaders` para enxergar o `https` original que chega do
+proxy em `X-Forwarded-Proto` — faça o mesmo nos seus projetos se eles geram URLs absolutas.
+
+### Atualizando os screenshots
+
+```bash
+dotnet run --project tools/DotValet.Screenshots
+```
+
+Sobe os exemplos pelo próprio Dot Valet (config, CA e hosts num diretório temporário — o sistema não é
+alterado), renderiza a janela sem abri-la (Avalonia headless) e fotografa os sites com o Chrome headless,
+que resolve `*.test` para `127.0.0.1` via `--host-resolver-rules`. Precisa do Chrome (ou `CHROME_PATH`),
+dos SDKs .NET 8/9/10 e das portas 80/443 livres. As imagens vão para `docs/screenshots/`.
+
+## CI e releases (GitHub Actions)
+
+- [`ci.yml`](.github/workflows/ci.yml) — a cada push/PR compila e roda `dotnet test` no Ubuntu, macOS e Windows,
+  além de compilar os exemplos e a ferramenta de screenshots.
+- [`release.yml`](.github/workflows/release.yml) — ao enviar uma tag `v*` roda os testes, publica executáveis
+  self-contained (single-file) para `win-x64`, `win-arm64`, `osx-arm64`, `osx-x64` (empacotados como
+  `Dot Valet.app` com assinatura ad-hoc), `linux-x64` e `linux-arm64`, e cria a release com os arquivos e
+  `SHA256SUMS.txt`. Tags com `-` (ex.: `v0.2.0-beta.1`) viram pré-release.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Também dá para rodar manualmente (Actions → Release → Run workflow): gera os artefatos sem criar release.
+
 ## Observações por plataforma
 
 - **macOS**: portas 80/443 funcionam sem root — o macOS só permite isso em endereço curinga, então nesse caso
@@ -122,4 +193,7 @@ src/DotValet/
   ViewModels/    MainViewModel, SiteViewModel
   Views/         MainWindow
 tests/DotValet.Tests/
+samples/         Loja, Painel, Blog (apps de exemplo)
+tools/DotValet.Screenshots/   gera docs/screenshots/
+.github/workflows/            ci.yml, release.yml
 ```

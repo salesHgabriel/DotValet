@@ -1,0 +1,151 @@
+name: Release
+
+# Crie uma tag para publicar: git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão (ex.: 0.1.0) — sem tag, gera só os artefatos, sem release'
+        required: true
+        default: '0.0.0-dev'
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Publicar ${{ matrix.rid }}
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: windows-latest, rid: win-arm64 }
+          # No macOS o binário precisa de assinatura (ad-hoc) feita no próprio macOS.
+          - { os: macos-latest, rid: osx-arm64 }
+          - { os: macos-latest, rid: osx-x64 }
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: ubuntu-latest, rid: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Versão
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: dotnet publish
+        shell: bash
+        run: |
+          dotnet publish src/DotValet/DotValet.csproj -c Release -r ${{ matrix.rid }} --self-contained \
+            -p:Version=${{ steps.version.outputs.version }} \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=None \
+            -o publish/${{ matrix.rid }}
+
+      - name: Empacotar (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path publish/${{ matrix.rid }}/* -DestinationPath dist/DotValet-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip
+
+      - name: Empacotar (macOS .app)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          version=${{ steps.version.outputs.version }}
+          app="publish/Dot Valet.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp -R publish/${{ matrix.rid }}/. "$app/Contents/MacOS/"
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Dot Valet</string>
+            <key>CFBundleDisplayName</key><string>Dot Valet</string>
+            <key>CFBundleIdentifier</key><string>dev.dotvalet.app</string>
+            <key>CFBundleExecutable</key><string>DotValet</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>${version%%-*}</string>
+            <key>CFBundleVersion</key><string>${version}</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          # Assinatura ad-hoc: obrigatória para rodar em Apple Silicon (sem notarização).
+          codesign --force --deep --sign - "$app"
+          mkdir -p dist
+          ditto -c -k --keepParent "$app" "dist/DotValet-${version}-${{ matrix.rid }}.zip"
+
+      - name: Empacotar (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist
+          tar -czf "dist/DotValet-${{ steps.version.outputs.version }}-${{ matrix.rid }}.tar.gz" -C publish/${{ matrix.rid }} .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DotValet-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Release no GitHub
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## Downloads
+
+            | Sistema | Arquivo |
+            |---|---|
+            | Windows (x64 / ARM64) | `DotValet-*-win-x64.zip` / `DotValet-*-win-arm64.zip` |
+            | macOS (Apple Silicon / Intel) | `DotValet-*-osx-arm64.zip` / `DotValet-*-osx-x64.zip` |
+            | Linux (x64 / ARM64) | `DotValet-*-linux-x64.tar.gz` / `DotValet-*-linux-arm64.tar.gz` |
+
+            Os executáveis são self-contained (não precisam do .NET instalado para abrir o Dot Valet;
+            para rodar seus projetos, instale o SDK correspondente).
+
+            **macOS:** o app não é notarizado. Na primeira vez, clique com o botão direito → **Abrir**, ou rode
+            `xattr -dr com.apple.quarantine "/Applications/Dot Valet.app"`.
