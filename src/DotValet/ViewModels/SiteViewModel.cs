@@ -29,6 +29,8 @@ public partial class SiteViewModel : ViewModelBase
         launchProfileName = model.LaunchProfileName;
         addToExistingProfiles = model.AddToExistingProfiles;
         useWatch = model.UseWatch;
+        ngrokDomain = model.NgrokDomain ?? "";
+        ngrokInLaunchSettings = model.NgrokInLaunchSettings;
         this.isNew = isNew;
         _loading = false;
         Refresh();
@@ -42,6 +44,8 @@ public partial class SiteViewModel : ViewModelBase
     [ObservableProperty] private string launchProfileName;
     [ObservableProperty] private bool addToExistingProfiles;
     [ObservableProperty] private bool useWatch;
+    [ObservableProperty] private string ngrokDomain;
+    [ObservableProperty] private bool ngrokInLaunchSettings;
 
     [ObservableProperty] private bool isDirty;
     [ObservableProperty] private bool isNew;
@@ -52,6 +56,25 @@ public partial class SiteViewModel : ViewModelBase
     [ObservableProperty] private string frameworkLabel = "";
     [ObservableProperty] private string? projectWarning;
     [ObservableProperty] private string log = "";
+
+    // ---- Compartilhamento (ngrok) — estado da sessão, não é salvo ----
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasShareUrl))] private string? shareUrl;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShareIdle))] private bool isSharing;
+    [ObservableProperty] private string shareStatus = "não compartilhado";
+
+    public bool HasShareUrl => ShareUrl is not null;
+    public bool ShareIdle => !IsSharing;
+
+    /// <summary>Domínio do ngrok normalizado (null quando vazio ou inválido).</summary>
+    public string? NgrokHost => NgrokService.TryNormalizeDomain(NgrokDomain, out var d, out _) ? d : null;
+    public string? NgrokDomainError => NgrokService.TryNormalizeDomain(NgrokDomain, out _, out var e) ? null : e;
+    public string NgrokProfileName => LaunchSettingsService.NgrokProfileName(Model);
+
+    public string NgrokLaunchSettingsPreview => Endpoints is null
+        ? ""
+        : NgrokHost is { } host
+        ? LaunchSettingsService.PreviewNgrokProfile(Model, Endpoints, NgrokService.PublicUrlFor(host))
+        : "Informe um domínio fixo do ngrok para gerar o perfil (a URL aleatória muda a cada compartilhamento).";
 
     public bool Parked => Model.Parked;
 
@@ -87,6 +110,14 @@ public partial class SiteViewModel : ViewModelBase
     partial void OnAddToExistingProfilesChanged(bool value) => Changed(() => Model.AddToExistingProfiles = value);
     partial void OnUseWatchChanged(bool value) => Changed(() => Model.UseWatch = value);
     partial void OnProjectPathChanged(string value) => Changed(() => Model.ProjectPath = value);
+    partial void OnNgrokInLaunchSettingsChanged(bool value) => Changed(() => Model.NgrokInLaunchSettings = value);
+
+    partial void OnNgrokDomainChanged(string value)
+    {
+        OnPropertyChanged(nameof(NgrokHost));
+        OnPropertyChanged(nameof(NgrokDomainError));
+        Changed(() => Model.NgrokDomain = string.IsNullOrWhiteSpace(value) ? null : value.Trim());
+    }
 
     partial void OnEndpointsChanged(SiteEndpoints? value)
     {
@@ -115,6 +146,8 @@ public partial class SiteViewModel : ViewModelBase
         DomainError = error;
         OnPropertyChanged(nameof(LaunchSettingsPreview));
         OnPropertyChanged(nameof(LaunchSettingsPath));
+        OnPropertyChanged(nameof(NgrokProfileName));
+        OnPropertyChanged(nameof(NgrokLaunchSettingsPreview));
 
         var info = File.Exists(Model.ProjectPath) ? ProjectInspector.TryInspect(Model.ProjectPath) : null;
         if (info is null)

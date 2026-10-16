@@ -99,7 +99,7 @@ public static class LaunchSettingsService
     public static void Remove(Site site)
     {
         var path = GetPath(site.ProjectPath);
-        if (!File.Exists(path) || (site.AppliedProfileName is null && site.AppliedBindingUrl is null))
+        if (!File.Exists(path) || (site.AppliedProfileName is null && site.AppliedBindingUrl is null && site.AppliedNgrokProfileName is null))
             return;
 
         var root = Load(path);
@@ -109,10 +109,72 @@ public static class LaunchSettingsService
                 profiles.Remove(name);
             if (site.AppliedBindingUrl is { } url)
                 RemoveUrlFromProfiles(profiles, url);
+            if (site.AppliedNgrokProfileName is { } ngrok)
+                profiles.Remove(ngrok);
         }
         Save(path, root);
         site.AppliedBindingUrl = null;
         site.AppliedProfileName = null;
+        site.AppliedNgrokProfileName = null;
+    }
+
+    public static string NgrokProfileName(Site site) =>
+        $"{(string.IsNullOrWhiteSpace(site.LaunchProfileName) ? "DotValet" : site.LaunchProfileName)}-ngrok";
+
+    /// <summary>
+    /// Perfil "{perfil}-ngrok": sobe o app no mesmo endereço local e abre o navegador na URL pública do ngrok.
+    /// O applicationUrl continua local: o Kestrel não escuta no domínio do ngrok, quem recebe o tráfego é o túnel.
+    /// </summary>
+    public static JsonObject BuildNgrokProfile(SiteEndpoints ep, string publicUrl, JsonObject? template)
+    {
+        var profile = BuildProfile(ep, template);
+        profile["launchUrl"] = publicUrl;
+        return profile;
+    }
+
+    public static string PreviewNgrokProfile(Site site, SiteEndpoints ep, string publicUrl) =>
+        new JsonObject { [NgrokProfileName(site)] = BuildNgrokProfile(ep, publicUrl, null) }.ToJsonString(WriteOptions);
+
+    /// <summary>Cria/atualiza o perfil do ngrok logo depois dos demais (o primeiro perfil continua sendo o do domínio .test).</summary>
+    public static void ApplyNgrok(Site site, SiteEndpoints ep, string publicUrl)
+    {
+        var path = GetPath(site.ProjectPath);
+        var root = Load(path);
+        var profiles = root["profiles"] as JsonObject ?? new JsonObject();
+        var name = NgrokProfileName(site);
+
+        if (site.AppliedNgrokProfileName is { } old && old != name)
+            profiles.Remove(old);
+
+        var template = profiles
+            .Where(p => p.Key != name)
+            .Select(p => p.Value as JsonObject)
+            .FirstOrDefault(p => p?["commandName"]?.GetValue<string>() == "Project");
+
+        var ours = BuildNgrokProfile(ep, publicUrl, template);
+        if (profiles[name] is JsonObject)
+            profiles[name] = ours;
+        else
+            profiles.Add(name, ours);
+        root["profiles"] = profiles;
+
+        Save(path, root);
+        site.AppliedNgrokProfileName = name;
+    }
+
+    public static void RemoveNgrok(Site site)
+    {
+        var path = GetPath(site.ProjectPath);
+        if (site.AppliedNgrokProfileName is not { } name || !File.Exists(path))
+        {
+            site.AppliedNgrokProfileName = null;
+            return;
+        }
+        var root = Load(path);
+        if (root["profiles"] is JsonObject profiles)
+            profiles.Remove(name);
+        Save(path, root);
+        site.AppliedNgrokProfileName = null;
     }
 
     private static void RemoveUrlFromProfiles(JsonObject profiles, string url)

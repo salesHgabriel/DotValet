@@ -28,10 +28,17 @@ public sealed class Site
 
     public bool UseWatch { get; set; }
 
+    /// <summary>Domínio fixo do ngrok (ex.: meu-app.ngrok-free.app); vazio = URL aleatória a cada compartilhamento.</summary>
+    public string? NgrokDomain { get; set; }
+
+    /// <summary>Criar no launchSettings.json um perfil "{LaunchProfileName}-ngrok" que abre a URL do ngrok.</summary>
+    public bool NgrokInLaunchSettings { get; set; }
+
     /// <summary>Criado automaticamente a partir de uma pasta estacionada ("park").</summary>
     public bool Parked { get; set; }
 
     /// <summary>O que foi escrito por último no launchSettings.json, para conseguir desfazer.</summary>
     public string? AppliedBindingUrl { get; set; }
     public string? AppliedProfileName { get; set; }
+    public string? AppliedNgrokProfileName { get; set; }
 }
