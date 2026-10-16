@@ -6,12 +6,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Ícone do .exe no Windows; os de macOS/Linux ficam em packaging/ (gerados por tools/icons/generate.sh). -->
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>DotValet</AssemblyName>
     <RootNamespace>DotValet</RootNamespace>
     <Product>Dot Valet</Product>
     <Version>0.1.0</Version>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- O proxy reverso (Kestrel + YARP) roda dentro do próprio app. -->

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Variante macOS: grade de 824px com margem e sombra, como os ícones do sistema. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7B5CFF"/>
+      <stop offset="1" stop-color="#4527C9"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <g transform="translate(512 512) scale(0.888) translate(-512 -512)">
+    <circle cx="278" cy="690" r="64" fill="#fff"/>
+    <polyline points="408,330 578,700 748,330" fill="none" stroke="#fff" stroke-width="124"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

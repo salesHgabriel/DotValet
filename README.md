@@ -1,4 +1,4 @@
-# Dot Valet
+# <img src="docs/icon.png" width="40" align="center" alt=""> Dot Valet
 
 [![CI](https://github.com/salesHgabriel/DotValet/actions/workflows/ci.yml/badge.svg)](https://github.com/salesHgabriel/DotValet/actions/workflows/ci.yml)
 [![Release](https://github.com/salesHgabriel/DotValet/actions/workflows/release.yml/badge.svg)](https://github.com/salesHgabriel/DotValet/releases/latest)
@@ -25,6 +25,19 @@ Baixe a versão mais recente em [Releases](https://github.com/salesHgabriel/DotV
 Os executáveis são self-contained: não é preciso ter o .NET instalado para abrir o Dot Valet (para rodar
 seus projetos, sim). No macOS o app não é notarizado — na primeira vez use botão direito → **Abrir** ou
 `xattr -dr com.apple.quarantine "/Applications/Dot Valet.app"`.
+No Linux, extraia o `.tar.gz` e rode `./install.sh` para instalar em `~/.local/bin` com atalho e ícone no
+menu de aplicativos (`./install.sh --uninstall` remove).
+
+### Ícones
+
+O ícone vem de [`tools/icons/icon.svg`](tools/icons/icon.svg) (e `icon-macos.svg`, com a margem padrão do macOS).
+Depois de editar, rode `tools/icons/generate.sh` (requer `rsvg-convert`; o `.icns` só é gerado no macOS):
+
+| Plataforma | Arquivo | Uso |
+|---|---|---|
+| Windows | `src/DotValet/Assets/icon.ico` | ícone do `.exe` (`ApplicationIcon`) e da janela |
+| macOS | `packaging/macos/DotValet.icns` | ícone do `Dot Valet.app` (Dock, Finder, Launchpad) |
+| Linux | `packaging/linux/dotvalet.png` + `dotvalet.desktop` | menu de aplicativos, via `install.sh` |
 
 ## Screenshots
 
@@ -196,4 +209,6 @@ tests/DotValet.Tests/
 samples/         Loja, Painel, Blog (apps de exemplo)
 tools/DotValet.Screenshots/   gera docs/screenshots/
 .github/workflows/            ci.yml, release.yml
+packaging/       ícone do macOS (.icns), atalho/ícone/instalador do Linux
+tools/icons/     icon.svg e generate.sh
 ```

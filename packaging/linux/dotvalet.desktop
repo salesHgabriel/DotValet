@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dot Valet
+GenericName=Domínios .test para ASP.NET Core
+Comment=Domínios .test, HTTPS local e proxy reverso para projetos ASP.NET Core
+Exec=DotValet
+Icon=dotvalet
+Terminal=false
+Categories=Development;
