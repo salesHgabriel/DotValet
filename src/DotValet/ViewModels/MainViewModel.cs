@@ -17,6 +17,7 @@ public partial class MainViewModel : ViewModelBase
     private readonly ProxyServer _proxy = new();
     private readonly SiteRunner _runner = new();
     private readonly ValetService _valet = new();
+    private readonly NgrokService _ngrok = new();
     private AppConfig _config;
 
     public IUiService? Ui { get; set; }
@@ -71,7 +72,15 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string? selectedParkedPath;
     [ObservableProperty] private bool backupHostsFile;
     [ObservableProperty] private string hostsBackupStatus = "";
-    
+
+    // ---- ngrok ----
+    [ObservableProperty] private string ngrokAuthToken = "";
+    [ObservableProperty] private bool showNgrokToken;
+    [ObservableProperty] private string ngrokStatus = "";
+    public string NgrokTokenUrl => NgrokService.AuthTokenUrl;
+    public string NgrokDownloadUrl => NgrokService.DownloadUrl;
+    public string NgrokDomainsUrl => NgrokService.DomainsUrl;
+
     // ---- Laravel Valet ----
     public bool ValetInstalled => _valet.IsInstalled;
     [ObservableProperty] private bool valetIntegration;
@@ -101,6 +110,8 @@ public partial class MainViewModel : ViewModelBase
         UseHostsFile = !UseDnsmasq;
         BackupHostsFile = _config.BackupHostsFile;
         ValetIntegration = _config.ValetIntegration;
+        NgrokAuthToken = _config.NgrokAuthToken ?? "";
+        RefreshNgrokStatus();
         RefreshDnsStatus();
         RefreshCaStatus();
     }
@@ -235,6 +246,12 @@ public partial class MainViewModel : ViewModelBase
                 return;
             }
 
+            if (vm.NgrokDomainError is { } ngrokError)
+            {
+                StatusMessage = ngrokError;
+                return;
+            }
+
             if (ep.ExplicitPort is null && site.AppPort == 0)
             {
                 site.AppPort = PortAllocator.Next(ReservedPorts(except: site));
@@ -259,6 +276,26 @@ public partial class MainViewModel : ViewModelBase
             catch (Exception e)
             {
                 messages.Add($"falha no launchSettings.json: {e.Message}");
+            }
+
+            try
+            {
+                if (site.NgrokInLaunchSettings && vm.NgrokHost is { } ngrokHost)
+                {
+                    LaunchSettingsService.ApplyNgrok(site, ep, NgrokService.PublicUrlFor(ngrokHost));
+                    messages.Add($"perfil \"{site.AppliedNgrokProfileName}\" → {NgrokService.PublicUrlFor(ngrokHost)}");
+                }
+                else if (site.AppliedNgrokProfileName is not null)
+                {
+                    LaunchSettingsService.RemoveNgrok(site);
+                    messages.Add("perfil do ngrok removido do launchSettings.json");
+                }
+                if (site.NgrokInLaunchSettings && vm.NgrokHost is null)
+                    messages.Add("perfil do ngrok não criado: informe um domínio fixo do ngrok");
+            }
+            catch (Exception e)
+            {
+                messages.Add($"falha no perfil do ngrok: {e.Message}");
             }
 
             if (vm.IsNew)
@@ -286,6 +323,7 @@ public partial class MainViewModel : ViewModelBase
         await RunBusyAsync(async () =>
         {
             _runner.Stop(vm.Model.Id);
+            _ngrok.Stop(vm.Model.Id);
             try
             {
                 LaunchSettingsService.Remove(vm.Model);
@@ -331,6 +369,9 @@ public partial class MainViewModel : ViewModelBase
         _config.Sites[_config.Sites.IndexOf(vm.Model)] = fresh;
         var restored = CreateVm(fresh);
         restored.IsRunning = _runner.IsRunning(fresh.Id);
+        restored.IsSharing = vm.IsSharing;
+        restored.ShareUrl = vm.ShareUrl;
+        restored.ShareStatus = vm.ShareStatus;
         Sites.Insert(index, restored);
         SelectedSite = restored;
     }
@@ -448,6 +489,127 @@ public partial class MainViewModel : ViewModelBase
     private static bool SamePath(string a, string b) =>
         string.Equals(Path.GetFullPath(a), Path.GetFullPath(b),
             PlatformInfo.Os == OsKind.Linux ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+
+    // ================= Compartilhar (ngrok) =================
+
+    private SiteViewModel? FindSite(string id) => Sites.FirstOrDefault(s => s.Model.Id == id);
+
+    [RelayCommand]
+    private async Task ShareSiteAsync()
+    {
+        if (SelectedSite is not { } vm || vm.IsSharing)
+            return;
+        if (vm.Endpoints is not { } ep)
+        {
+            StatusMessage = vm.DomainError ?? "Domínio inválido.";
+            return;
+        }
+        if (vm.NgrokDomainError is { } domainError)
+        {
+            StatusMessage = domainError;
+            return;
+        }
+        if (NgrokService.FindExecutable() is not { } ngrok)
+        {
+            StatusMessage = $"ngrok não encontrado: instale-o ({NgrokService.DownloadUrl}) e tente de novo.";
+            RefreshNgrokStatus();
+            return;
+        }
+
+        var id = vm.Model.Id;
+        vm.IsSharing = true;
+        vm.ShareUrl = null;
+        vm.ShareStatus = "conectando ao ngrok…";
+        var (target, listening) = await NgrokService.ResolveTargetAsync(ep.ListenPort);
+        var notRunning = listening ? "" :
+            $" — atenção: nada responde em localhost:{ep.ListenPort}; inicie o site (▶ Iniciar), senão o visitante vê ERR_NGROK_8012";
+        if (!listening)
+            vm.AppendLog($"[Dot Valet] Aviso: nada escutando em 127.0.0.1/[::1]:{ep.ListenPort} — o site não está rodando (ou roda em outra porta).");
+
+        try
+        {
+            _ngrok.Start(id, ngrok, target, vm.NgrokHost, _config.NgrokAuthToken,
+                line => Dispatcher.UIThread.Post(() => FindSite(id)?.AppendLog(line)),
+                url => Dispatcher.UIThread.Post(() =>
+                {
+                    if (FindSite(id) is not { } s)
+                        return;
+                    s.ShareUrl = url;
+                    s.ShareStatus = $"compartilhado: {url} → {target}{notRunning}";
+                    StatusMessage = $"{s.Name} compartilhado em {url}{notRunning}";
+                }),
+                error => Dispatcher.UIThread.Post(() =>
+                {
+                    if (FindSite(id) is not { } s)
+                        return;
+                    s.IsSharing = false;
+                    s.ShareUrl = null;
+                    if (error is null)
+                    {
+                        s.ShareStatus = "não compartilhado";
+                        return;
+                    }
+                    var hint = NgrokService.Hint(error);
+                    s.ShareStatus = $"erro: {error}" + (hint is null ? "" : $" — {hint}");
+                    StatusMessage = $"ngrok ({s.Name}): {hint ?? error}";
+                }),
+                // Com o túnel no ar: ex. o visitante abriu a URL e o app não respondeu (ERR_NGROK_8012).
+                error => Dispatcher.UIThread.Post(() =>
+                {
+                    if (FindSite(id) is not { ShareUrl: { } url } s)
+                        return;
+                    var hint = NgrokService.Hint(error);
+                    s.ShareStatus = $"compartilhado: {url} → {target} — {hint ?? error}";
+                    StatusMessage = $"ngrok ({s.Name}): {hint ?? error}";
+                }));
+            StatusMessage = $"Abrindo túnel do ngrok para {vm.Name} ({target})…";
+        }
+        catch (Exception e)
+        {
+            vm.IsSharing = false;
+            vm.ShareStatus = $"erro: {e.Message}";
+            StatusMessage = $"Falha ao iniciar o ngrok: {e.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void StopShare()
+    {
+        if (SelectedSite is not { } vm)
+            return;
+        _ngrok.Stop(vm.Model.Id);
+        vm.IsSharing = false;
+        vm.ShareUrl = null;
+        vm.ShareStatus = "não compartilhado";
+        StatusMessage = $"Compartilhamento de {vm.Name} encerrado.";
+    }
+
+    [RelayCommand]
+    private void SaveNgrokToken()
+    {
+        var token = NgrokAuthToken.Trim();
+        _config.NgrokAuthToken = token.Length == 0 ? null : token;
+        NgrokAuthToken = token;
+        Persist();
+        RefreshNgrokStatus();
+        StatusMessage = token.Length == 0
+            ? "Authtoken do ngrok removido (o ngrok usa o do ngrok.yml, se houver)."
+            : "Authtoken do ngrok salvo. Vale para os próximos compartilhamentos.";
+    }
+
+    [RelayCommand]
+    private void ClearNgrokToken()
+    {
+        NgrokAuthToken = "";
+        SaveNgrokToken();
+    }
+
+    private void RefreshNgrokStatus()
+    {
+        var exe = NgrokService.FindExecutable();
+        var token = string.IsNullOrEmpty(_config.NgrokAuthToken) ? "authtoken não salvo (usa o do ngrok.yml, se houver)" : "authtoken salvo";
+        NgrokStatus = exe is null ? $"ngrok não encontrado — instale em {NgrokService.DownloadUrl} · {token}" : $"{exe} · {token}";
+    }
 
     // ================= Park (pastas estacionadas) =================
 
@@ -961,6 +1123,7 @@ public partial class MainViewModel : ViewModelBase
     public async Task ShutdownAsync()
     {
         _runner.StopAll();
+        _ngrok.StopAll();
         await _proxy.StopAsync();
     }
 }

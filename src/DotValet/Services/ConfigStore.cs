@@ -35,11 +35,16 @@ public static class ConfigStore
         };
     }
 
-    public static void Save(AppConfig config)
+    public static void Save(AppConfig config) => Save(config, ConfigPath);
+
+    internal static void Save(AppConfig config, string path)
     {
-        var tmp = ConfigPath + ".tmp";
+        var tmp = path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(config, Options));
-        File.Move(tmp, ConfigPath, overwrite: true);
-        PlatformInfo.GiveBackToUser(ConfigPath);
+        // Guarda o authtoken do ngrok: só o dono lê.
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(tmp, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        File.Move(tmp, path, overwrite: true);
+        PlatformInfo.GiveBackToUser(path);
     }
 }

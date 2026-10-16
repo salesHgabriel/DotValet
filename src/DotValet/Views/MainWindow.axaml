@@ -198,6 +198,61 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Compartilhar (ngrok) -->
+                            <Border Classes="card">
+                                <StackPanel Classes="form">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="h2" Text="Compartilhar (ngrok)" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                            <Button Content="Compartilhar" Classes="accent" IsVisible="{Binding ShareIdle}"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).ShareSiteCommand}"
+                                                    ToolTip.Tip="Publica o site na internet por um túnel do ngrok (como o `valet share`)" />
+                                            <Button Content="Parar compartilhamento" IsVisible="{Binding IsSharing}"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).StopShareCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Domínio do ngrok" />
+                                        <TextBox Text="{Binding NgrokDomain}" Classes="mono"
+                                                 PlaceholderText="meu-app.ngrok-free.app  (vazio = URL aleatória a cada vez)" />
+                                        <TextBlock Classes="error" Margin="0,4,0,0" Text="{Binding NgrokDomainError}"
+                                                   IsVisible="{Binding NgrokDomainError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                            <TextBlock Classes="muted" Text="Cole o domínio fixo da sua conta (o plano gratuito tem um):" VerticalAlignment="Center" />
+                                            <HyperlinkButton Padding="0" Content="dashboard.ngrok.com/domains"
+                                                             Command="{Binding #Root.((vm:MainViewModel)DataContext).OpenUrlCommand}"
+                                                             CommandParameter="{Binding #Root.((vm:MainViewModel)DataContext).NgrokDomainsUrl}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="label" Text="URL pública" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasShareUrl}">
+                                            <HyperlinkButton Classes="url" Content="{Binding ShareUrl}"
+                                                             Command="{Binding #Root.((vm:MainViewModel)DataContext).OpenUrlCommand}"
+                                                             CommandParameter="{Binding ShareUrl}" />
+                                            <Button Content="Copiar" Padding="8,2"
+                                                    Command="{Binding #Root.((vm:MainViewModel)DataContext).CopyUrlCommand}"
+                                                    CommandParameter="{Binding ShareUrl}" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding ShareStatus}" TextWrapping="Wrap" />
+                                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                                   Text="O túnel aponta direto para o Kestrel do app (127.0.0.1 ou [::1], o que estiver respondendo na porta do site), então inicie o site antes. O ngrok entrega HTTPS e envia X-Forwarded-Proto; use UseForwardedHeaders se o app gera URLs absolutas." />
+                                    </StackPanel>
+
+                                    <CheckBox IsChecked="{Binding NgrokInLaunchSettings}"
+                                              Content="{Binding NgrokProfileName, StringFormat='Criar o perfil &quot;{0}&quot; no launchSettings.json com a URL do ngrok'}" />
+                                    <StackPanel Spacing="8" IsVisible="{Binding NgrokInLaunchSettings}">
+                                        <TextBlock Classes="muted" TextWrapping="Wrap"
+                                                   Text="O perfil abre o navegador na URL do ngrok; o applicationUrl continua local (o tráfego chega pelo túnel). Aplicado ao clicar em &quot;Salvar e aplicar&quot;." />
+                                        <Border Background="{DynamicResource CodeBrush}" CornerRadius="8" Padding="12"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
+                                            <SelectableTextBlock Classes="mono" Text="{Binding NgrokLaunchSettingsPreview}" TextWrapping="Wrap" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                             <!-- Executar -->
                             <Border Classes="card">
                                 <StackPanel Classes="form">
@@ -236,7 +291,7 @@
             <!-- ===================== AMBIENTE ===================== -->
             <TabItem Header="Ambiente">
                 <ScrollViewer Margin="0,8,0,12">
-                    <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto" Margin="0,0,8,0">
+                    <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto,16,Auto" Margin="0,0,8,0">
 
                         <Border Classes="card">
                             <StackPanel Spacing="6">
@@ -351,7 +406,32 @@
                             </StackPanel>
                         </Border>
 
-                        <StackPanel Grid.Row="6" Grid.ColumnSpan="3" Orientation="Horizontal">
+                        <Border Grid.Row="6" Classes="card">
+                            <StackPanel Classes="form">
+                                <TextBlock Classes="h2" Text="Compartilhar (ngrok)" />
+                                <TextBlock Classes="muted" TextWrapping="Wrap"
+                                           Text="Publica um site na internet por um túnel do ngrok (botão Compartilhar de cada site), como o `valet share`." />
+                                <TextBlock Text="{Binding NgrokStatus}" TextWrapping="Wrap" />
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Authtoken" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Text="{Binding NgrokAuthToken}" Classes="mono" PasswordChar="•"
+                                                 RevealPassword="{Binding ShowNgrokToken}" PlaceholderText="cole o authtoken da sua conta ngrok" />
+                                        <ToggleButton Grid.Column="1" Margin="8,0,0,0" Content="Mostrar" IsChecked="{Binding ShowNgrokToken}" />
+                                    </Grid>
+                                </StackPanel>
+                                <WrapPanel ItemSpacing="8" LineSpacing="8">
+                                    <Button Content="Salvar token" Classes="accent" Command="{Binding SaveNgrokTokenCommand}" />
+                                    <Button Content="Remover token" Command="{Binding ClearNgrokTokenCommand}" />
+                                    <Button Content="Obter token" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding NgrokTokenUrl}" />
+                                    <Button Content="Instalar ngrok" Command="{Binding OpenUrlCommand}" CommandParameter="{Binding NgrokDownloadUrl}" />
+                                </WrapPanel>
+                                <TextBlock Classes="muted" TextWrapping="Wrap"
+                                           Text="O token fica no config.json do Dot Valet e é passado ao ngrok pela variável NGROK_AUTHTOKEN. Sem token salvo, vale o configurado com `ngrok config add-authtoken`." />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Grid.Row="8" Grid.ColumnSpan="3" Orientation="Horizontal">
                             <Button Content="Salvar configurações" Classes="accent" Padding="18,8" Command="{Binding SaveSettingsCommand}" />
                         </StackPanel>
                     </Grid>

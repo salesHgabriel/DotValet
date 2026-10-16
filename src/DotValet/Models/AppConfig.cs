@@ -22,6 +22,9 @@ public sealed class AppConfig
     /// <summary>Backup do hosts (principal + último) antes de cada alteração.</summary>
     public bool BackupHostsFile { get; set; } = true;
 
+    /// <summary>Authtoken do ngrok (dashboard.ngrok.com); vazio = usa o que estiver no ngrok.yml do usuário.</summary>
+    public string? NgrokAuthToken { get; set; }
+
     /// <summary>Publicar os sites também pelo nginx do Laravel Valet (`valet proxy`), quando ele estiver instalado.</summary>
     public bool ValetIntegration { get; set; }
 

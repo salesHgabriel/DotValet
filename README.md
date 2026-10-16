@@ -66,6 +66,7 @@ Os três projetos de [`samples/`](samples) servidos pelo Dot Valet ao mesmo temp
 | `valet link` | | **+ Pasta do projeto** / **+ .csproj** |
 | `valet park` | | **Estacionar pasta** (cada subpasta com projeto web vira `subpasta.test`) |
 | `valet secure` | | **HTTPS no proxy** (CA local + certificado por domínio via SNI) |
+| `valet share` | | **Compartilhar** (túnel do ngrok, com domínio fixo e perfil no launchSettings.json) |
 
 A plataforma é detectada automaticamente e a estratégia exibida na aba **Ambiente**.
 
@@ -105,6 +106,39 @@ já sobem o app no domínio:
 **▶ Iniciar** roda `dotnet run --no-launch-profile` (ou `dotnet watch run`) com `ASPNETCORE_URLS`
 apontando para a URL do site — funciona igual em todas as versões a partir do ASP.NET Core 2.x — e mostra
 o log na tela. O app avisa se o runtime ASP.NET Core da versão do projeto não estiver instalado.
+
+### Compartilhar com o ngrok (`valet share`)
+
+O card **Compartilhar (ngrok)** de cada site publica o app na internet por um túnel do [ngrok](https://ngrok.com):
+
+1. Instale o ngrok ([download](https://ngrok.com/download), `brew install ngrok`, `winget install ngrok.ngrok` ou `snap install ngrok`).
+2. Na aba **Ambiente**, cole o [authtoken da sua conta](https://dashboard.ngrok.com/get-started/your-authtoken) e clique em
+   **Salvar token**. Sem token salvo, vale o que estiver configurado com `ngrok config add-authtoken`.
+3. No site, informe o **Domínio do ngrok** — o domínio fixo da sua conta (o plano gratuito tem um, em
+   [dashboard.ngrok.com/domains](https://dashboard.ngrok.com/domains)), ex.: `meu-app.ngrok-free.app`. Vazio = URL aleatória a cada vez.
+4. Inicie o site e clique em **Compartilhar**: a URL pública aparece no card, com botão para copiar.
+
+O Dot Valet roda `ngrok http http://127.0.0.1:<porta do app> --url https://<domínio>` (em agentes antigos, `--domain`), então
+funciona nos modos proxy e direto. Antes de abrir o túnel ele testa `127.0.0.1` e `[::1]` e usa o endereço em que o app responde —
+com `localhost` o ngrok pode tentar só o IPv6 e o visitante vê **ERR_NGROK_8012** (*connection refused*). Esse erro também aparece
+quando o site não está rodando: inicie-o (**▶ Iniciar**) ou, rodando pela IDE, use o perfil do Dot Valet (mesma porta). O ngrok entrega HTTPS e envia `X-Forwarded-Proto`: use `UseForwardedHeaders` se o app gera URLs
+absolutas (como os [exemplos](samples)). No plano gratuito só um agente fica conectado por vez.
+
+Com **Criar o perfil "DotValet-ngrok" no launchSettings.json**, ao salvar o site é criado um segundo perfil (depois do principal)
+que abre o navegador na URL do ngrok:
+
+```json
+"DotValet-ngrok": {
+  "commandName": "Project",
+  "launchBrowser": true,
+  "launchUrl": "https://meu-app.ngrok-free.app",
+  "applicationUrl": "http://localhost:5172"
+}
+```
+
+O `applicationUrl` continua local — o Kestrel não escuta no domínio do ngrok; o tráfego chega pelo túnel. Desmarcar a opção ou
+remover o site apaga o perfil. O authtoken fica no `config.json` (permissão 600 no macOS/Linux) e vai para o ngrok pela variável
+`NGROK_AUTHTOKEN`, sem aparecer na lista de processos.
 
 ## Requisitos
 
@@ -202,7 +236,7 @@ src/DotValet/
   Models/        Site, AppConfig
   Services/      DomainParser, SiteEndpoints, ProjectInspector, LaunchSettingsService,
                  HostsFileService, DnsmasqService, CertificateService, ProxyServer,
-                 SiteRunner, DotnetEnvironment, Elevation, PlatformInfo, ConfigStore
+                 SiteRunner, NgrokService, DotnetEnvironment, Elevation, PlatformInfo, ConfigStore
   ViewModels/    MainViewModel, SiteViewModel
   Views/         MainWindow
 tests/DotValet.Tests/
